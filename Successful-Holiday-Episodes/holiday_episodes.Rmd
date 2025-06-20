@@ -1,0 +1,652 @@
+---
+title: "Holiday Episodes"
+author: "Jennifer Liu, Puah Rui Jie, Wang Yifei, Wang Jingtao, Rajvrat Thapliyal"
+date: "Last edited `r Sys.Date()`"
+output: 
+  html_document:
+    keep_tex: yes
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+    number_sections: false
+    theme: spacelab
+    highlight: tango
+---
+
+```{=html}
+<style>
+/* Fonts */
+body {
+  font-family: "Georgia", serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Colors */
+body {
+  background-color: #ffffff;
+  color: #333;
+}
+
+a {
+  color: #428bca;
+}
+
+a:hover {
+  color: #2a6496;
+}
+
+/* Layout */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Georgia", serif;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+h3 {
+  font-size: 1.8rem;
+}
+
+h4 {
+  font-size: 1.2rem;
+}
+
+h5 {
+  font-size: 1rem;
+}
+
+h6 {
+  font-size: 0.9rem;
+}
+
+/* Code blocks */
+pre {
+  background-color: #f5f5f5;
+  color: #333;
+  padding: 1.5rem;
+  border: 1px solid #ddd;
+  overflow-x: auto;
+}
+
+code {
+  font-family: "Monaco", monospace;
+  font-size: 1.2rem;
+}
+
+pre > code {
+  font-size: 1.2rem;
+}
+
+/* Blockquotes */
+blockquote {
+  background-color: #f5f5f5;
+  color: #666;
+  font-style: italic;
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  border-left: 5px solid #ccc;
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Title and Author */
+.title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 0.5em;
+  margin-top: 2em;
+}
+
+.author {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.date {
+  text-align: center;
+  font-style: italic;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+}
+
+</style>
+<div style="display: flex; justify-content: space-between; gap: 20px;">
+<div style="flex: 1;" id="table1"></div>
+<div style="flex: 1;" id="table2"></div>
+<div style="flex: 1;" id="table3"></div>
+</div>
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, out.width = '100%', out.height = '100%', message = FALSE, warning = FALSE)
+```
+
+```{r, include = FALSE}
+library(tidyverse)
+library(stringr)
+library(lubridate)
+library(readxl)
+library(ggthemes)
+library(ggrepel)
+library(maps)
+library(sf)
+library(shiny)
+library(patchwork)
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(htmltools)
+library(gridExtra)
+```
+
+```{r data, include=FALSE}
+holiday_episode <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2023/2023-12-19/holiday_episodes.csv')
+holiday_episode_genres <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2023/2023-12-19/holiday_episode_genres.csv')
+```
+
+# Introduction
+
+Holiday-themed episodes are a common strategy for television shows to engage viewers during festive seasons. However, producing a holiday special is not always a guaranteed success — some episodes outperform their parent series, while others perform worse than their parent series. In this project, we investigate: What makes a holiday episode worth airing?
+
+We will be using data from the TidyTuesday project on holiday-themed TV episodes. Here is the link to the page: [Holiday Episodes (2023-12-19)] (<https://github.com/rfordatascience/tidytuesday/tree/main/data/2023/2023-12-19>). We focus specifically on **Christmas episodes** aired from **2013** **onward**, reflecting trends from **the last decade**. The dataset comprises of two CSV files from the Internet Movie Database (IMDb):
+
+-   `holiday_episode_genres.csv`: Contains the genres associated with the episode.
+
+-   `holiday_episode.csv`: Contains information about holiday episodes including average ratings for holiday episodes, average ratings for their parent TV series, genres and episode runtime (minute).
+
+Our goal is to identify factors that correspond to the positive reception for holiday episodes. This includes factors such as average rating of the parent TV series, genre of the episode and its runtime. Through a series of visualizations, we explore how these various attributes influence the success of a holiday episode.
+
+Our central question is:
+What are the features of a successful Christmas episode within the last 10 years?
+
+# Data Cleaning & Summary
+
+To focus on modern trends, we filtered the dataset to only include **Christmas-themed episodes** aired from **2013 onwards**. We removed rows with missing or zero values for runtime. Additionally, we joined `holiday_episode.csv` with `holiday_episode_genres.csv` using the unique episode identifier `tconst` and created a new variable named `popularity` which is defined as the difference between the average rating of the holiday episode and the average rating of its parent TV series. This metric serves as a proxy for how well the holiday episode was received with respect to typical episodes from the same show.
+
+The total number of unique observations after data cleaning is 1134, giving us a reasonably large recent sample of episodes.
+
+```{r}
+holiday_epi  = holiday_episode %>% mutate(popularity = average_rating-parent_average_rating) %>%
+  filter(christmas, year>=2013, !is.na(runtime_minutes), runtime_minutes!=0) %>%
+  left_join(holiday_episode_genres, by="tconst") %>%
+  select(-genres.x) %>%
+  rename(genres= genres.y) %>%
+  filter(!is.na(genres))
+```
+
+```{r echo=FALSE, include=FALSE}
+n_distinct(holiday_epi)
+```
+
+```{r, results='asis', message=FALSE, warning=FALSE, echo=F}
+table1 = holiday_epi %>%
+  count(genres, sort = TRUE) 
+
+n <- nrow(table1)
+split_size <- ceiling(n / 3)
+tables_split1 <- split(table1, rep(1:3, each = split_size, length.out = n))
+
+table1.1 = kable(tables_split1[[1]], format = "html") %>%
+  kable_styling("striped", full_width = FALSE)
+
+table1.2 = kable(tables_split1[[2]], format = "html") %>%
+  kable_styling("striped", full_width = FALSE)
+
+table1.3 = kable(tables_split1[[3]], format = "html") %>%
+  kable_styling("striped", full_width = FALSE)
+
+cat('
+<h2 style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;">
+  Table 1: Number of Christmas Episodes in each Genre
+</h2>
+<div style="display: flex; justify-content: space-between;">
+  <div style="flex: 1; padding-right: 10px;">', table1.1, '</div>
+  <div style="flex: 1; padding-right: 10px;">', table1.2, '</div>
+  <div style="flex: 1;">', table1.3, '</div>
+</div>
+')
+```
+
+```{r, results='asis', message=FALSE, warning=FALSE, echo=F}
+table2 <- holiday_epi %>%
+  summarise(
+    `Average Rating` = mean(average_rating),
+    `Average Parent Rating` = mean(parent_average_rating),
+    `Average Popularity` = mean(popularity),
+    `Median Popularity` = median(popularity),
+    `Min Popularity` = min(popularity),
+    `Max Popularity` = max(popularity)
+  ) 
+
+pop_metrics_table <- kable(table2, col.names = c("Average Rating", "Average Parent Rating", "Average Popularity", "Median Popularity", "Min Popularity", "Max Popularity"), format = "html") %>%
+  kable_styling("striped")
+
+cat('
+<h2 style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;">
+  Table 2: Summary of Popularity Metrics
+</h2>
+<div style="display: flex; justify-content: center;">', pop_metrics_table, '</div>
+')
+```
+
+```{r, results='asis', message=FALSE, warning=FALSE, echo=F}
+table3 = holiday_epi %>%
+  summarise(
+    `Min Runtime` = min(runtime_minutes),
+    `Median Runtime` = median(runtime_minutes),
+    `Mean Runtime` = mean(runtime_minutes),
+    `Max Runtime` = max(runtime_minutes)
+  )
+
+runtime_summary_table <- kable(table3, col.names = c("Min Runtime", "Median Runtime", "Mean Runtime", "Max Runtime"), format = "html") %>%
+  kable_styling("striped")
+
+cat('
+<h2 style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;">
+  Table 3: Runtime Summary of Christmas Episodes
+</h2>
+<div style="display: flex; justify-content: center;">', runtime_summary_table, '</div>
+')
+```
+
+```{r, results='asis', message=FALSE, warning=FALSE, echo=F}
+# Summarise the data
+runtime_table <- holiday_epi %>%
+  group_by(genres) %>%
+  summarise(mean_runtime = round(mean(runtime_minutes), 2)) %>%
+  arrange(mean_runtime)
+
+# Split into 3 parts
+n <- nrow(runtime_table)
+split_size <- ceiling(n / 3)
+tables_split <- split(runtime_table, rep(1:3, each = split_size, length.out = n))
+
+table1 = kable(tables_split[[1]], format = "html") %>%
+  kable_styling("striped", full_width = FALSE)
+
+table2 = kable(tables_split[[2]], format = "html") %>%
+  kable_styling("striped", full_width = FALSE)
+
+table3 = kable(tables_split[[3]], format = "html") %>%
+  kable_styling("striped", full_width = FALSE)
+
+cat('
+<h2 style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;">
+  Table 4: Average Runtime by Genre
+</h2>
+<div style="display: flex; justify-content: space-between;">
+  <div style="flex: 1; padding-right: 10px;">', table1, '</div>
+  <div style="flex: 1; padding-right: 10px;">', table2, '</div>
+  <div style="flex: 1;">', table3, '</div>
+</div>
+')
+```
+
+The tables above provide a clearer picture of the key factors driving our analysis. Genres like Comedy and Animation appear frequently among Christmas episodes, suggesting a strong preference for light-hearted content during the holiday season. The popularity metric reveals a generally positive reception for holiday specials, but the wide range also points to inconsistency in audience response. Lastly, episode runtime is typically aligned with standard timing slots, though several longer specials suggest attempts at more ambitious storytelling. This is also shown in Table 4, where the mean runtimes vary vastly for different genres.These patterns set the stage for our upcoming visualizations, where we go in-depth to analyse how these variables interact to influence an episode’s success.
+
+# Visualisations
+
+## Plot 1: Parent TV Series Rating
+
+### Visualisation
+
+```{r warning=FALSE}
+ggplot(holiday_epi, aes(x = parent_average_rating)) +
+  geom_smooth(aes(y=popularity, color="Popularity (rating difference)"), se=FALSE, lwd=1) +
+  geom_smooth(aes(y=average_rating, color="Holiday Episode rating"), se=FALSE,lwd=1) +
+  geom_jitter(aes(y = popularity, color="Popularity (rating difference)"), alpha=0.3) +
+  geom_jitter(aes(y = average_rating, color="Holiday Episode rating"), alpha=0.3) +
+  geom_abline(slope = 0, intercept = 0, size = 0.5, colour = "grey60", linetype = "dashed") +
+  labs(title = "Rating of individial episodes based on TV series rating",
+       x = "TV series rating", y = "",
+       color = "") +
+  scale_color_manual(values = c("Popularity (rating difference)" = "#0072B2", "Holiday Episode rating" = "#E69F00")) +
+  theme_bw() +
+  theme(legend.position = "top") 
+```
+
+### Methodology and Description
+
+Plot 1 consists of 2 scatter plots:
+1. Rating of holiday episode against rating of its respective parent TV series (in orange)
+2. Popularity against rating of parent TV series (in blue), where `popularity` is computed as follows:
+
+$$popularity = average\ rating_{episode} - average\ rating_{series}$$
+
+2 Locally Estimated Scatterplot Smoothing (LOESS) lines are included to highlight the trends of each scatterplot. The use of transparent plot markers allows us to also visually identify clusters formed by the data points.This is done by observing how intense the colour of the region is. A more intense colour indicates more points in the region while a less intense colour indicates the presence of fewer observations in that region. 
+
+Finally, a dashed line indicates the 0 value. Episodes with popularity values equal to or above this threshold are considered to be worth producing or “desirable”, since they at the minimum match the rating of their parent show. Holiday episodes with a popularity value below this threshold will be considered to be not worth producing or “undesirable” as they do not perform as well as their parent shows.
+
+### Discussion
+
+From Plot 1, we can see clearly that the rating of the holiday episode has an overall positive relationship  with the rating of the parent TV Series. On the other hand,popularity has an overall negative relationship with the rating of the parent TV Series. This makes sense as teams behind already well-liked TV shows are more likely to be able to produce a holiday episode with a high rating as well.  
+
+However, it is more difficult for holiday episodes of TV shows which are already highly rated to further increase their already high ratings, due to the smaller leftover room for improvement. Therefore, as the rating of the parent show for a holiday episode increases, the harder it is for the popularity of that holiday episode to be above 0. For example, in the case of the show *The Last Drive-In with Joe Bob Briggs*, which has an average rating of 9.4, the average rating of its 13 holiday episodes is 8.18, a whole point lower. On the other hand, *Keeping Up with the Kardashians* has an average rating of 2.9, but the average rating of its 3 holiday episodes is 4.9, which is significantly higher. The average number of votes between the 3 episodes is only 56, compared to the 31256 of the whole series, suggesting that both the episode rating and the series rating may be skewed, thanks to hardcore fans and also hardcore haters respectively.
+
+Hence, while the plot seems to suggest that highly rated TV shows should avoid making holiday episodes, the data may be too skewed to tell conclusively. Plus, there are other considerations. For example, holiday episodes tend to draw in more viewers, and not making a holiday episode may result in a reduction in viewership, resulting in a potential loss in revenue on the specific show, regardless of the show’s rating or popularity. Therefore, producers may still choose to produce a holiday episode despite the holiday episode possibly having a lower rating than its parent series.
+
+## Plot 2: Genre
+
+### Visualisation
+
+```{r}
+THRESHOLD <- 0
+
+df2 <- holiday_epi %>% mutate(group = case_when(popularity >= THRESHOLD ~ "Desirable",
+                                              popularity < THRESHOLD ~ "Undesirable"))
+
+# Step 1: Compute total counts per group
+total_counts <- df2 %>%
+  group_by(group) %>%
+  summarise(total = n())
+
+# Step 2: Count each genre per group and compute proportions
+genre_props <- df2 %>%
+  group_by(group, genres) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  left_join(total_counts, by = "group") %>%
+  mutate(proportion = count / total)
+
+# Updated threshold values
+HIGHLIGHT_THRESHOLD <- 0.022
+
+# Step 3: Pivot wider so we can compute the difference
+genre_prop_diff <- genre_props %>%
+  select(group, genres, proportion) %>%
+  pivot_wider(names_from = group, values_from = proportion, values_fill = 0) %>%
+  mutate(
+    diff = Desirable - Undesirable,
+    label_text = round(diff, 3),
+    # Color logic: green for positive values > 0.022, red for negative values < -0.022, steelblue otherwise
+    bar_color = case_when(
+      #4DAF4A
+      diff > HIGHLIGHT_THRESHOLD ~ "#009E73",
+      diff < -HIGHLIGHT_THRESHOLD ~ "#D55E00",
+      TRUE ~ "#F0E442"
+    )
+  ) %>%
+  arrange(diff)
+
+# Create a data frame for the vertical line labels with offset positions
+vline_labels <- data.frame(
+  # Offset the x position slightly from the actual line
+  x = c(-HIGHLIGHT_THRESHOLD - 0.0005, HIGHLIGHT_THRESHOLD + 0.0005),
+  y = 10,  
+  label = c("-0.022", "0.022"),
+  hjust = c(1, 0)  # Right-align left label, left-align right label
+)
+
+# Step 4: Plot with actual differences (not absolute values)
+ggplot(genre_prop_diff, aes(x = diff, y = reorder(genres, diff))) +
+  geom_bar(stat = "identity", aes(fill = bar_color)) +
+  # Add vertical reference lines at updated thresholds
+  geom_vline(xintercept = HIGHLIGHT_THRESHOLD, linetype = "dashed", color = "darkgray") +
+  geom_vline(xintercept = -HIGHLIGHT_THRESHOLD, linetype = "dashed", color = "darkgray") +
+  # Add labels for vertical lines with offset
+  geom_text(data = vline_labels, aes(x = x, y = y, label = label, hjust = hjust),
+            size = 3, color = "darkgray") +
+  # Add bar value labels
+  geom_text(aes(label = label_text),
+            hjust = ifelse(genre_prop_diff$diff >= 0, -0.1, 1.1),
+            size = 2.5,
+            color = "black") +
+  scale_fill_identity() +
+  # Set x-axis breaks at 0.01 intervals
+  scale_x_continuous(breaks = seq(-0.1, 0.1, by = 0.01)) +
+  labs(
+    title = "Difference in Genre Proportions (Desirable - Undesirable)",
+    x = "Proportion Difference",
+    y = "Genre"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank()
+  )
+```
+
+### Methodology and Description
+
+This bar chart visualises the difference in genre proportions between a dataset of “desirable” holiday episodes and "Undesirable" Christmas episodes. An episode is considered desirable if its popularity is  \>= 0, where it achieves a rating equal to or greater than its parent series.
+
+For each genre,
+
+$$Genre\ proportion\ difference = \frac {n_{Desirable,\ genre}} {n_{Desirable,\ total}} - \frac {n_{Undesirable,\ genre}} {n_{Undesirable,\ total}}$$
+
+The genre proportion difference helps explain how changes in a show's desirability may be influenced by differences in genre representation between the desirable and undesirable datasets. A large positive genre proportion difference means that, relative to their respective dataset sizes, the genre makes up a higher proportion of 'Desirable' shows than 'Undesirable' ones. This suggests that if a holiday episode falls into this genre, producers should consider creating it—and vice versa for genres with a large negative difference.
+
+The top 3 genres with the highest positive influence on a show's desirability are highlighted in green, indicating that producers are encouraged to create episodes in these genres. Conversely, the top 3 genres most associated with undesirability are highlighted in orange, signaling that producers should avoid them.
+
+To determine the cut-off value of 0.022 for identifying the most desirable and undesirable genres to produce, we first plotted the absolute values of the genre proportion differences. Genres were then sorted in descending order based on their absolute differences. Using the elbow method, we identified the point of the largest drop—corresponding to the genre 'Talk-show', which has an absolute proportion difference of 0.022 (this graph is not shown). This value was then used as the threshold: in the final plot (using the original, non-absolute values), genres with a difference equal to or greater than 0.022 are considered notably favourable to produce, while those with a difference equal to or less than -0.022 are considered unfavourable. 
+
+### Discussion
+
+To further assess whether a producer should create a holiday episode for their TV series, we focus on the impact of genre in Plot 2. The genres most overrepresented in the Desirable group compared to the Undesirable group are **Drama**, **Family**, and **Romance**. This suggests that emotionally resonant or relatable themes—often central to these genres—are particularly well-suited for Christmas storytelling and may lead to higher viewer ratings.
+
+For example, the **Drama** series *Ginny and Georgia* took advantage of a Christmas reunion to produce an episode that allowed the main character to open up about her trauma, which was emotional and impactful for many viewers. The **Romance** show *When Calls the Heart* was produced by the Hallmark channel, known for its cheesey soap operas that are a staple of the holiday season. It is not surprising, then, that an episode that amps up these aspects would perform resonate with the regular audience of the show and even those who tune in as a Christmas custom. Finally, the **Family** genre includes many light-hearted Disney Channel shows like *Henry Danger*, *Good Luck Charlie* and *Liv and Maddie* which include themes of togetherness that are essential to Christmas spirit and make an uplifting Christmas night watch.
+
+On the other hand, genres like **Game-Show**, **Horror** and **Talk-Show** are far more common in the Undesirable group with **Game-Show** having the most negative difference in genre proportions. This may imply a mismatch between the casual, unscripted nature of these genres and the audience's expectation for an immersive, story driven holiday story plot. Additionally, **War**, **Musical** and **Biography** appear neutral suggesting that the holiday aspect does not essentially contribute to a more or less well-liked episode for its audience. At the same time, according to *Table 1: Number of Holiday Episodes in each Genre*, there are only 2 data points for **War**, **Musical** and **Biography**. More data points may be needed to further determine whether they are more commonly seen in Desirable group or Undesirable group.
+
+
+## Plot 3: Runtime
+
+### Visualisation
+
+```{r}
+dfp3 <- df2 %>% filter(genres %in% c("Drama","Romance", "Family")) %>%
+    mutate(runtimebin = cut(runtime_minutes, 
+                            breaks = seq(0, max(runtime_minutes), by = 10),
+                            include.lowest = TRUE)) %>%
+  group_by(genres, runtimebin, group) %>%
+  count() %>%
+  pivot_wider(names_from = group, values_from = n) %>%
+  replace_na(list(Desirable = 0, Undesirable = 0))
+
+ggplot(dfp3, aes(x = as.numeric(runtimebin))) +
+  geom_col(aes(y = Desirable, fill="Desirable"), position = position_dodge(width = 0.7), width = 0.6, alpha = 0.5) +
+  geom_col(aes(y = Undesirable, fill="Undesirable"), position = position_dodge(width = 0.7), width = 0.6, alpha = 0.5) +
+  geom_smooth(aes(y = Desirable, colour = "Desirable"), linewidth = 0.5, se = FALSE) +
+  geom_smooth(aes(y = Undesirable, colour = "Undesirable"), linewidth = 0.5, se = FALSE) +
+  facet_wrap(~genres, scales = "free_x") +
+  scale_x_continuous(breaks = c(1:length(levels(dfp3$runtimebin)) - 0.5, length(levels(dfp3$runtimebin)) + 0.5),
+                     labels = seq(0, 120, by = 10)) +
+  scale_colour_manual(values = c("Desirable" = "#009E73",
+                                 "Undesirable" = "#D55E00")) +
+  scale_fill_manual(values = c("Desirable" = "#009E73",
+                                 "Undesirable" = "#D55E00")) +
+  labs(title = "Count of Desriable and Undesirable runtimes for each genre",
+       x = "Runtime (minutes)", y = "Count", colour = "",
+       fill = "Group") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 6), legend.position = "top") +
+  guides(colour = "none") +
+  ylim(0, NA) 
+  
+```
+
+### Methodology and Description
+
+Plot 3 illustrates the distribution of runtimes across different genres. To prepare the data, we first binned the episodes based on their runtimes and counted the number of Desirable and Undesirable episodes within each bin. We then created two sets of bar graphs and overlaid smooth trend lines to visualize the distribution of Desirable (green) and Undesirable (red) episodes within each genre
+
+The bin sizes and bounds for runtime were selected to emphasize contrasts between frequently and infrequently occurring runtime ranges, while preserving the interpretability of the plot. The smooth lines reveal the overall distribution trends within each genre, while the bar graphs provide a more granular view, allowing us to identify specific runtime bins that stand out.
+
+### Discussion
+
+From Plot 3, we can make a few significant observations. 
+
+Firstly, for each genre, there are some very common runtimes. For Drama, it is 20-30 minutes and 40-50 minutes. This is not surprising as TV shows are known to usually have runtimes around 22 minutes or 44 minutes. This is to fit the episodes into half or full hour blocks while allocating time for commercials. For the Family genre, almost all the episodes are on the shorter side, since they have to account for the shorter attention spans of young viewers and are less concerned with tackling complex issues that require long runtimes to comprehensively understand. Finally, the runtimes of episodes from the romance genre are also mostly within the 20-30 minute range.
+
+For Dramas, it is also clear that holiday episodes that follow conventional runtimes have a higher chance of being Desirable, especially when compared to episodes of the same genre in the 80-90 minute range. For example, *Call the Midwife* is a highly rated TV show with 6 holiday episodes with runtimes in that range. As such, it is hard to raise the episode rating further, resulting in most of the episodes being Undesirable.
+
+Family TV shows are even more clear-cut. By sticking to the conventional 22-minute runtime, the holiday episode is highly likely to be Desirable. From Table 5, we can see that while Romance and Drama TV shows have similar ratings, Family TV shows have significantly lower ratings. As such, even though Family holiday episodes tend to be less well-liked than Drama and Romance episodes, they are still more often Desirable. As discussed earlier, the Christmas spirit is highly compatible with the themes of Family TV shows, which also tend to treat holiday episodes more seriously by leaving big moments for these episodes or inviting famous stars for the episode.
+
+```{r, results='asis', message=FALSE, warning=FALSE, echo=F}
+table5 <- holiday_epi %>% 
+  filter(genres == c("Romance", "Family", "Drama")) %>%
+  group_by(genres) %>%
+  summarise(genre_parent_rating = round(mean(parent_average_rating), 2),
+            genre_rating = round(mean(average_rating), 2))
+
+table5_1 <- kable(table5, col.names = c("Genre", "Average Parent Rating", "Average Rating"), format = "html") %>%
+  kable_styling("striped")
+
+cat('
+<h2 style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;">
+  Table 5: Genre Ratings
+</h2>
+<div style="display: flex; justify-content: center;">', table5_1, '</div>
+')
+```
+
+Finally, for Romances, the shapes of the distributions of Desirable and Undesirable episodes is quite similar. This suggests that there is no clear strategy to producing a Desirable Romance holiday episode.
+
+Of course, there are many limitations to this analysis too. Not only is there a small sample size, it is also difficult to isolate the effects of runtime on an episode or generalise the recommendations to all TV shows. For example, if *Call the Midwife* were to suddenly broadcast a 44-minute episode during Christmas, regular viewers may be more put-off by this, instead of making the episode more Desirable.
+
+# Conclusions
+
+In general, episodes with strong parent series ratings tend to have a harder time producing holiday episodes with a drastic increase in rating, however making a holiday episode might still be a good choice for these shows provided that the quality of the holiday episode can stay consistent with that of the parent series episodes. Producers of less popular series that are looking for a big increase in rating have to consider 2 other key factors: genre and runtime. Genre choice can significantly influence how a holiday episode is received. Episodes in the Drama, Family, and Romance genres have the highest proportions of Desirable outcomes, while Talk-Show, Horror, and Game-Show genres have the lowest. This aligns with the intuitive appeal of emotionally rich and festive themes typically associated with Christmas. Producers should therefore consider leveraging genres that resonate with the holiday spirit and favor emotional storytelling to enhance audience engagement. Lastly, runtime matters; within the successful genres, episodes with moderate runtimes, typically between 20 - 40 minutes tend to be better received by audiences. Producers should aim to make episodes of an optimal runtime that fit their genre.
+
+# Shiny App
+
+This is an interactive app that my group would like to include in our project to reflect the main goal/function of our project – to help the producers to decide whether it is worth it to produce a holiday episode.
+
+Factors include expected rating for parent TV series and genre are taken as input. The app will then show whether the producer should produce a holiday episode. If yes, what is the recommended runtime for that episode.
+
+1.  Whether to produce a holiday episode
+
+This is answered based on our result from Plot 2. If the genres fall in Desirable group, Christmas episode is worth producing, vice versa.
+
+2.  What is the optimal runtime
+
+A quadratic model is fit on the dataset to find the optimal runtime. However, due to the lack of datapoints, the prediction may not be accurate and the model may not be perfect. More data points are needed to further improve the model and give more reliable recommendations.
+
+```{r eval=FALSE}
+find_optimal_runtime = function(holiday_epi) {
+  model = lm(popularity~poly(runtime_minutes, 2, raw=TRUE), data=holiday_epi)
+  coefs = coef(model)
+  a = coefs[3]
+  b = coefs[2]
+  
+  if (is.na(a) || a==0 || is.na(b)){
+    if (!is.na(b)&&b>0){
+      opt_runtime = max(holiday_epi$runtime_minutes, na.rm=TRUE)} else if (!is.na(b)&& b<0){
+      opt_runtime = min(holiday_epi$runtime_minutes, na.rm=TRUE)} else{
+      opt_runtime <- mean(holiday_epi$runtime_minutes, na.rm = TRUE)
+      }
+  }
+  else{
+    opt_runtime = -b / (2 * a)
+  }
+  
+  
+  return(data.frame(genre = unique(holiday_epi$genres),
+                    opt_runtime = opt_runtime))
+}
+
+optimal_runtimes = holiday_epi %>%
+  group_by(genres) %>%
+  group_split() %>%
+  map_df(find_optimal_runtime)
+```
+
+Desirable genres
+
+```{r eval=FALSE}
+desirable_genres = df2 %>% filter(group=="Desirable") %>%
+  distinct(genres) %>%
+  pull(genres)
+```
+
+```{r eval=FALSE}
+library(shinythemes)
+genre_choices = holiday_epi %>% select(genres) %>% distinct() %>%
+  mutate(genres=as.factor(genres)) %>%
+  pull(genres)
+
+ui = fluidPage(
+  theme = shinytheme("flatly"),
+  titlePanel("Is it worth producing a Christmas holiday episode?"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      numericInput("rating", "Enter your Parent TV Series Rating: ", value = 8.0, min = 0, max = 10, step = 0.1),
+      selectInput("genre", "Select Genre: ", choices = genre_choices),
+      actionButton("submit", "Check Recommendation", class = "btn-primary")
+    ),
+    
+    mainPanel(
+      h3("Here is Your Holiday Episode Analysis Result!"),
+      wellPanel(
+        h4("Recommendation:"),
+        textOutput("recommendation"),
+        br(),
+        h4("Optimal Runtime for your holiday episode:"),
+        textOutput("runtime")
+      )
+      
+    )
+  )
+)
+
+server = function(input, output, session){
+  observeEvent(input$submit, {
+    genre_input = input$genre
+    rating_input = input$rating
+    
+    new_data = data.frame(
+      parent_average_rating = rating_input,
+      genres = factor(genre_input, levels = levels(holiday_app$genres))
+    )
+    
+    recommendation = ifelse(genre_input %in% desirable_genres,
+                            "🎄 A Christmas holiday episode is worth producing!",
+                            "❌ Don't waste your money on a Christmas holiday episode.")
+    
+    runtime = optimal_runtimes %>%
+      filter(genre == genre_input) %>%
+      pull(opt_runtime)
+    
+    output$recommendation = renderText({ recommendation })
+    output$runtime = renderText({ paste0(round(runtime, 1), " minutes") })
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+# Teamwork
+
+The overall direction and strategy of the project was decided as a team. Jennifer and Yifei worked on the first and third visualisations, Raj worked on the second, Rui Jie worked on the third write-up, and Yifei worked on the Shiny App, while Yifei and Jingtao was in charge of pulling everything together and writing the write-up.
+
+# References
+* Holiday Episodes | Data Catalog.* (n.d.). Retrieved March 11, 2025, from https://datasets.imdbws.com/
+
+Comcast Advertising. (2022, December 15). *New Effectv research highlights the perennial value of holiday programming in a changing media landscape.* Comcast Advertising. Retrieved April 18, 2025, from https://comcastadvertising.com/news/new-effectv-research-highlights-the-perennial-value-of-holiday-programming-in-a-changing-media-landscape/
