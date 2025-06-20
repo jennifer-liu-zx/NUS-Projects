@@ -17,7 +17,7 @@ For academic projects in NUS
 - Language: Python
 - Featured methods/packages: Random Forest, XGBoost, LSTM
 
-### Features of a Successful Holiday Episode
+### Features of Successful Holiday Episodes
 - Course: DSA2101 Essential Data Analytics Tools: Data Visualisation
 - Directory: `Successful-Holiday-Episodes`
 - Language: R (RMarkdown)
