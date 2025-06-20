@@ -8,7 +8,7 @@ For academic projects in NUS
 - Course: DSE1101 Introductory Data Science for Economics
 - Directory: `Economic-Growth-Prediction`
 - Language: R
-- Featured methods/packages: linear regression, PCA/PCR
+- Featured methods/packages: linear regression, K-means Clustering, PCA/PCR
   
 
 ## Year 2 (AY2024-25)
