@@ -11,5 +11,5 @@ DSE1101 Introductory Data Science for Economics
 IT1244 Artificial Intelligence and Society
 - Forecasting Relative Humidity with Machine Learning and Neural Networks (`Weather-Forecasting`)
 
-## DSA2101 Essential Data Analysis with R
+DSA2101 Essential Data Analysis with R
 - Features of a Successful Holiday Episode (`Successful-Holiday-Episodes`)
