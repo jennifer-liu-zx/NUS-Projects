@@ -10,8 +10,3 @@ The data contains information on holiday TV episodes from IMDB.
 ## Task
 
 The team was tasked to create 3 visualisations surrounding a central question.
-
-## Contributions
-
-The team consisted of 5 people. I was working with my friends who were great teammates!
-I contributed mostly to the first and third visualisations and helped out here and there for the write-ups.
