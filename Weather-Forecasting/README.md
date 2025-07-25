@@ -9,7 +9,3 @@ The team was provided with hourly weather data along with the assignment outline
 ## Task
 
 The team was tasked to predict relative humidity 1 hour, 6 hours and 24 hours in the future, using only data of other indicators from previous periods.
-
-## Contributions
-
-The team consisted of 4 members. I must say that my teammates were all super hardworking and cooperative. I was responsible for some of the data exploration and cleaning and mainly in charge of the LSTM model.
