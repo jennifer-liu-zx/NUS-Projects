@@ -10,11 +10,13 @@ For academic projects in NUS
 - Language: R
 - Featured methods/packages: linear regression, K-means Clustering, PCA/PCR
 
+
 ### YouTube as a Carrier of Cultural Heritage
 - Course: NHS2061 Post-Conflict Cambodia
-- Directory: `Economic-Growth-Prediction`
-- Language: R
-- Featured methods/packages: linear regression, K-means Clustering, PCA/PCR
+- Directory: `YouTube-and-Culture-in-Cambodia`
+- Language: NA
+- Featured methods/packages: NA
+
 
 ## Year 2 (AY2024-25)
 
